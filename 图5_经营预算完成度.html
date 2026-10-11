@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<title>标签微调 · 图5_经营预算完成度</title>
+<style>
+  body { margin:0; background:#1b1f27; font-family: -apple-system, "PingFang SC", sans-serif; }
+  .bar { position:fixed; top:0; left:0; right:0; height:52px; background:#0f131a;
+         display:flex; align-items:center; gap:12px; padding:0 16px; z-index:100;
+         color:#e8ecf3; box-shadow:0 2px 10px rgba(0,0,0,.4); }
+  .bar b { font-size:14px; }
+  .bar button { background:#2E6FD6; color:#fff; border:none; border-radius:6px;
+                padding:8px 14px; font-size:13px; cursor:pointer; }
+  .bar button.alt { background:#3a4351; }
+  .bar .hint { font-size:12px; color:#9AA3B2; }
+  .stage { position:relative; margin:70px auto 40px; width:2520px; }
+  .stage img { display:block; width:100%; user-select:none; -webkit-user-drag:none; }
+  .lb { position:absolute; box-sizing:border-box; padding:2px 4px; cursor:move;
+        border:1.5px dashed rgba(46,111,214,.0); border-radius:4px;
+        white-space:nowrap; font-size:12px; line-height:1;
+        color:transparent; background:transparent; }
+  .stage.show-boxes .lb { border-color:rgba(46,111,214,.65); background:rgba(46,111,214,.12);
+        color:#0a2540; }
+  .lb:hover { border-color:#E08A3C !important; background:rgba(224,138,60,.2) !important; }
+  .lb.active { border-color:#d32f2f !important; background:rgba(211,47,47,.18) !important; }
+  .tok { position:absolute; width:1px; height:1px; }
+</style>
+</head>
+<body>
+<div class="bar">
+  <b>🖐 标签微调 · 图5_经营预算完成度</b>
+  <button id="toggle" class="alt">显示/隐藏框</button>
+  <button id="reset" class="alt">重置</button>
+  <button id="export">⬇ 导出坐标 JSON</button>
+  <button id="copy" class="alt">📋 复制坐标</button>
+  <span class="hint" id="hint">拖动方框调整位置 · 修改的是标签左上角坐标（原图像素）</span>
+</div>
+<div class="stage show-boxes" id="stage">
+  <img id="base" src="图5_经营预算完成度.png">
+</div>
+<script>
+const DATA = {"img": "图5_经营预算完成度.png", "W": 2520, "H": 1400, "labels": [{"text": "104.7", "x": 345, "y": 1144, "w": 59, "h": 24}, {"text": "121.6%", "x": 454, "y": 1142, "w": 101, "h": 29}, {"text": "预算 86.13", "x": 315, "y": 1199, "w": 112, "h": 26}, {"text": "167.37", "x": 375, "y": 1016, "w": 72, "h": 24}, {"text": "101.0%", "x": 526, "y": 1013, "w": 101, "h": 29}, {"text": "预算 165.71", "x": 315, "y": 1070, "w": 125, "h": 26}, {"text": "129.84", "x": 353, "y": 888, "w": 72, "h": 24}, {"text": "80.9%", "x": 518, "y": 885, "w": 85, "h": 29}, {"text": "预算 160.51", "x": 315, "y": 942, "w": 125, "h": 26}, {"text": "545.96", "x": 573, "y": 757, "w": 108, "h": 28}, {"text": "122.2%", "x": 958, "y": 757, "w": 101, "h": 29}, {"text": "预算 446.62", "x": 315, "y": 814, "w": 124, "h": 26}, {"text": "88.03", "x": 336, "y": 631, "w": 59, "h": 24}, {"text": "97.8%", "x": 438, "y": 628, "w": 85, "h": 29}, {"text": "预算 90.04", "x": 315, "y": 685, "w": 112, "h": 26}, {"text": "41.09", "x": 309, "y": 503, "w": 59, "h": 24}, {"text": "102.3%", "x": 382, "y": 500, "w": 101, "h": 29}, {"text": "预算 40.17", "x": 315, "y": 557, "w": 112, "h": 26}, {"text": "37.53", "x": 307, "y": 374, "w": 59, "h": 24}, {"text": "72.2%", "x": 394, "y": 372, "w": 85, "h": 29}, {"text": "预算 51.95", "x": 315, "y": 429, "w": 112, "h": 26}, {"text": "1,366.94", "x": 1027, "y": 244, "w": 137, "h": 28}, {"text": "102.3%", "x": 1896, "y": 243, "w": 101, "h": 29}, {"text": "预算 1,335.63", "x": 315, "y": 300, "w": 145, "h": 26}, {"text": "注：红=超预算、绿=低于预算（对成本类而言绿色才是好）；日常经营成本超预算 99.34万，是利润未达预算的主因", "x": 621, "y": 1370, "w": 1342, "h": 28}]};
+const stage = document.getElementById('stage');
+const img = document.getElementById('base');
+let boxes = [];
+
+function buildBoxes() {
+  boxes.forEach(b => b.el && b.el.remove());
+  boxes = [];
+  DATA.labels.forEach((L, i) => {
+    const el = document.createElement('div');
+    el.className = 'lb';
+    // 图像按容器宽度缩放，标签坐标也是图像坐标 → 直接用 px（stage 宽 = 图像宽）
+    el.style.left = (L.x * stage.clientWidth / DATA.W) + 'px';
+    el.style.top  = (L.y * img.clientHeight / DATA.H) + 'px';
+    el.style.fontSize = '12px';
+    el.textContent = L.text;
+    el.dataset.i = i;
+    stage.appendChild(el);
+    const box = { el, x: L.x, y: L.y, w: L.w, h: L.h, text: L.text, i };
+    el.addEventListener('mousedown', startDrag);
+    boxes.push(box);
+  });
+}
+
+let drag = null;
+function startDrag(e) {
+  const el = e.currentTarget;
+  el.classList.add('active');
+  const rect = el.getBoundingClientRect();
+  drag = { el, ox: e.clientX - rect.left, oy: e.clientY - rect.top };
+  e.preventDefault();
+}
+document.addEventListener('mousemove', e => {
+  if (!drag) return;
+  const sr = stage.getBoundingClientRect();
+  const scaleX = DATA.W / stage.clientWidth;
+  const scaleY = DATA.H / img.clientHeight;
+  let x = (e.clientX - sr.left - drag.ox) * scaleX;
+  let y = (e.clientY - sr.top  - drag.oy) * scaleY;
+  drag.el.style.left = (e.clientX - sr.left - drag.ox) + 'px';
+  drag.el.style.top  = (e.clientY - sr.top  - drag.oy) + 'px';
+  const b = boxes[+drag.el.dataset.i];
+  b.x = Math.round(x); b.y = Math.round(y);
+});
+document.addEventListener('mouseup', () => { if (drag) drag.el.classList.remove('active'); drag = null; });
+
+document.getElementById('toggle').onclick = () => stage.classList.toggle('show-boxes');
+document.getElementById('reset').onclick = () => buildBoxes();
+
+function payload() {
+  return boxes.map(b => ({ text: b.text, x: b.x, y: b.y }));
+}
+document.getElementById('export').onclick = () => {
+  const blob = new Blob([JSON.stringify(payload(), null, 2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = '图5_经营预算完成度_labels.json';
+  a.click();
+};
+document.getElementById('copy').onclick = async () => {
+  await navigator.clipboard.writeText(JSON.stringify(payload()));
+  document.getElementById('hint').textContent = '✅ 已复制到剪贴板，粘贴发给我即可';
+};
+
+window.addEventListener('load', buildBoxes);
+window.addEventListener('resize', buildBoxes);
+</script>
+</body>
+</html>

@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<title>标签微调 · 图6_伏那渠道环比涨幅</title>
+<style>
+  body { margin:0; background:#1b1f27; font-family: -apple-system, "PingFang SC", sans-serif; }
+  .bar { position:fixed; top:0; left:0; right:0; height:52px; background:#0f131a;
+         display:flex; align-items:center; gap:12px; padding:0 16px; z-index:100;
+         color:#e8ecf3; box-shadow:0 2px 10px rgba(0,0,0,.4); }
+  .bar b { font-size:14px; }
+  .bar button { background:#2E6FD6; color:#fff; border:none; border-radius:6px;
+                padding:8px 14px; font-size:13px; cursor:pointer; }
+  .bar button.alt { background:#3a4351; }
+  .bar .hint { font-size:12px; color:#9AA3B2; }
+  .stage { position:relative; margin:70px auto 40px; width:2520px; }
+  .stage img { display:block; width:100%; user-select:none; -webkit-user-drag:none; }
+  .lb { position:absolute; box-sizing:border-box; padding:2px 4px; cursor:move;
+        border:1.5px dashed rgba(46,111,214,.0); border-radius:4px;
+        white-space:nowrap; font-size:12px; line-height:1;
+        color:transparent; background:transparent; }
+  .stage.show-boxes .lb { border-color:rgba(46,111,214,.65); background:rgba(46,111,214,.12);
+        color:#0a2540; }
+  .lb:hover { border-color:#E08A3C !important; background:rgba(224,138,60,.2) !important; }
+  .lb.active { border-color:#d32f2f !important; background:rgba(211,47,47,.18) !important; }
+  .tok { position:absolute; width:1px; height:1px; }
+</style>
+</head>
+<body>
+<div class="bar">
+  <b>🖐 标签微调 · 图6_伏那渠道环比涨幅</b>
+  <button id="toggle" class="alt">显示/隐藏框</button>
+  <button id="reset" class="alt">重置</button>
+  <button id="export">⬇ 导出坐标 JSON</button>
+  <button id="copy" class="alt">📋 复制坐标</button>
+  <span class="hint" id="hint">拖动方框调整位置 · 修改的是标签左上角坐标（原图像素）</span>
+</div>
+<div class="stage show-boxes" id="stage">
+  <img id="base" src="图6_伏那渠道环比涨幅.png">
+</div>
+<script>
+const DATA = {"img": "图6_伏那渠道环比涨幅.png", "W": 2520, "H": 1440, "labels": [{"text": "+97.0%", "x": 1322, "y": 1195, "w": 82, "h": 26}, {"text": "+134.0%", "x": 1512, "y": 981, "w": 96, "h": 26}, {"text": "+39.8%", "x": 1028, "y": 766, "w": 83, "h": 26}, {"text": "+60.3%", "x": 1134, "y": 551, "w": 82, "h": 26}, {"text": "-51.3%", "x": 442, "y": 337, "w": 77, "h": 26}, {"text": "+133.5%", "x": 1510, "y": 1144, "w": 96, "h": 26}, {"text": "+122.7%", "x": 1454, "y": 929, "w": 96, "h": 26}, {"text": "+51.0%", "x": 1086, "y": 714, "w": 82, "h": 26}, {"text": "+110.4%", "x": 1391, "y": 500, "w": 95, "h": 26}, {"text": "+7.6%", "x": 863, "y": 285, "w": 70, "h": 26}, {"text": "+169.3%", "x": 1694, "y": 1092, "w": 95, "h": 26}, {"text": "+209.5%", "x": 1901, "y": 877, "w": 96, "h": 26}, {"text": "+102.4%", "x": 1350, "y": 663, "w": 96, "h": 26}, {"text": "+201.5%", "x": 1859, "y": 448, "w": 96, "h": 26}, {"text": "亮点：竹筏各渠道环比 +102%~+210%（唯一负值为联票 Q2-Q3 无联票数据）；皮划艇抖音+122.7%、旅行社+110.4%", "x": 599, "y": 1398, "w": 1385, "h": 30}]};
+const stage = document.getElementById('stage');
+const img = document.getElementById('base');
+let boxes = [];
+
+function buildBoxes() {
+  boxes.forEach(b => b.el && b.el.remove());
+  boxes = [];
+  DATA.labels.forEach((L, i) => {
+    const el = document.createElement('div');
+    el.className = 'lb';
+    // 图像按容器宽度缩放，标签坐标也是图像坐标 → 直接用 px（stage 宽 = 图像宽）
+    el.style.left = (L.x * stage.clientWidth / DATA.W) + 'px';
+    el.style.top  = (L.y * img.clientHeight / DATA.H) + 'px';
+    el.style.fontSize = '12px';
+    el.textContent = L.text;
+    el.dataset.i = i;
+    stage.appendChild(el);
+    const box = { el, x: L.x, y: L.y, w: L.w, h: L.h, text: L.text, i };
+    el.addEventListener('mousedown', startDrag);
+    boxes.push(box);
+  });
+}
+
+let drag = null;
+function startDrag(e) {
+  const el = e.currentTarget;
+  el.classList.add('active');
+  const rect = el.getBoundingClientRect();
+  drag = { el, ox: e.clientX - rect.left, oy: e.clientY - rect.top };
+  e.preventDefault();
+}
+document.addEventListener('mousemove', e => {
+  if (!drag) return;
+  const sr = stage.getBoundingClientRect();
+  const scaleX = DATA.W / stage.clientWidth;
+  const scaleY = DATA.H / img.clientHeight;
+  let x = (e.clientX - sr.left - drag.ox) * scaleX;
+  let y = (e.clientY - sr.top  - drag.oy) * scaleY;
+  drag.el.style.left = (e.clientX - sr.left - drag.ox) + 'px';
+  drag.el.style.top  = (e.clientY - sr.top  - drag.oy) + 'px';
+  const b = boxes[+drag.el.dataset.i];
+  b.x = Math.round(x); b.y = Math.round(y);
+});
+document.addEventListener('mouseup', () => { if (drag) drag.el.classList.remove('active'); drag = null; });
+
+document.getElementById('toggle').onclick = () => stage.classList.toggle('show-boxes');
+document.getElementById('reset').onclick = () => buildBoxes();
+
+function payload() {
+  return boxes.map(b => ({ text: b.text, x: b.x, y: b.y }));
+}
+document.getElementById('export').onclick = () => {
+  const blob = new Blob([JSON.stringify(payload(), null, 2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = '图6_伏那渠道环比涨幅_labels.json';
+  a.click();
+};
+document.getElementById('copy').onclick = async () => {
+  await navigator.clipboard.writeText(JSON.stringify(payload()));
+  document.getElementById('hint').textContent = '✅ 已复制到剪贴板，粘贴发给我即可';
+};
+
+window.addEventListener('load', buildBoxes);
+window.addEventListener('resize', buildBoxes);
+</script>
+</body>
+</html>
